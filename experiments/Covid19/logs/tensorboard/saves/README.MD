@@ -1,0 +1,1 @@
+Example of logs folder structure.
