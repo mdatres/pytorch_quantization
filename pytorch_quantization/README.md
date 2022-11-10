@@ -1,5 +1,3 @@
-# Example Package
+## PyTorch_Quantization Package 
 
-This is a simple example package. You can use
-[Github-flavored Markdown](https://guides.github.com/features/mastering-markdown/)
-to write your content.
+In this package all the quantization modules and algorithms are implemented. (WORK IN PROGRESS)
