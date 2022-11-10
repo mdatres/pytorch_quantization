@@ -1,0 +1,1 @@
+from .adapt import load_data
