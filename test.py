@@ -50,8 +50,8 @@ def test(path_to_experiment, path_to_weights):
         quant = False
 
     
+    quant_type = config["quant"]["type"]
     if quant:
-        quant_type = config["quant"]["type"]
         try:
             quant_observer_activations = config["quant"]["observer"]["activations"]["name"]
             quant_observer_weights = config["quant"]["observer"]["weights"]["name"]
@@ -79,14 +79,23 @@ def test(path_to_experiment, path_to_weights):
             qconfig = QConfig(activation=observer_act_class.with_args(**quant_observer_args_activations), weight =observer_weights_class.with_args(**quant_observer_args_weights))  
         except: 
             try:
-                py_observers = importlib.import_module("torch.quantization.observers")
+                py_observers = importlib.import_module("torch.quantization")
                 observer_act_class = getattr(py_observers, quant_observer_activations)
                 observer_weights_class = getattr(py_observers, quant_observer_weights)
-                quant_observer_args_activations["dtype"] = getattr(torch, quant_observer_args_activations["dtype"])
-                quant_observer_args_activations["qscheme"] = getattr(torch, quant_observer_args_activations["qscheme"])
-                observer_weights_class = getattr(pyquant_observers, quant_observer_activations)
-                quant_observer_args_weights["dtype"] = getattr(torch, quant_observer_args_weights["dtype"])
-                quant_observer_args_weights["qscheme"] = getattr(torch, quant_observer_args_weights["qscheme"])
+               
+                if "dtype" in quant_observer_args_activations.keys():
+                    quant_observer_args_activations["dtype"] = getattr(torch, quant_observer_args_activations["dtype"])
+                if "qscheme" in quant_observer_args_activations.keys():    
+                    quant_observer_args_activations["qscheme"] = getattr(torch, quant_observer_args_activations["qscheme"])
+                
+                observer_weights_class = getattr(py_observers, quant_observer_weights)
+                
+                if "dtype" in quant_observer_args_weights.keys():
+                    quant_observer_args_weights["dtype"] = getattr(torch, quant_observer_args_weights["dtype"])
+                if "qscheme" in quant_observer_args_weights.keys():  
+                    quant_observer_args_weights["qscheme"] = getattr(torch, quant_observer_args_weights["qscheme"])
+            
+                
                 qconfig = QConfig(activation=observer_act_class.with_args(**quant_observer_args_activations),
                             weight =observer_weights_class.with_args(**quant_observer_args_weights))
             except:
@@ -102,7 +111,7 @@ def test(path_to_experiment, path_to_weights):
                     except NotImplementedError:
                         print("Implement your costum observer in pytorch_quantization/observers")
 
-
+        print(qconfig)
 
         net.qconfig = qconfig
 
@@ -139,7 +148,7 @@ def test(path_to_experiment, path_to_weights):
                 
                     acc_val += acc
                 
-                print('Val/Acc   :' + str(acc_val/len(test_dataloader)))
+                print('Test/Acc   :' + str(acc_val/len(test_dataloader)))
                 print("--- %s seconds ---" % (time.time() - start_time))
 
         elif quant_type == "static":
@@ -149,7 +158,7 @@ def test(path_to_experiment, path_to_weights):
 
             # Prepare the model for static quantization. This inserts observers in
             # the model that will observe activation tensors during calibration.
-            model_fp32_prepared = torch.quantization.prepare(net, inplace = True)
+            model_fp32_prepared = torch.quantization.prepare(net, inplace = False)
             
             
             torch.quantization.convert(model_fp32_prepared, inplace = True)

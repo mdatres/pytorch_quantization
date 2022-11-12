@@ -64,14 +64,23 @@ def train(path_to_experiment):
             qconfig = QConfig(activation=observer_act_class.with_args(**quant_observer_args_activations), weight =observer_weights_class.with_args(**quant_observer_args_weights))  
         except: 
             try:
-                py_observers = importlib.import_module("torch.quantization.observers")
+                py_observers = importlib.import_module("torch.quantization")
                 observer_act_class = getattr(py_observers, quant_observer_activations)
                 observer_weights_class = getattr(py_observers, quant_observer_weights)
-                quant_observer_args_activations["dtype"] = getattr(torch, quant_observer_args_activations["dtype"])
-                quant_observer_args_activations["qscheme"] = getattr(torch, quant_observer_args_activations["qscheme"])
-                observer_weights_class = getattr(pyquant_observers, quant_observer_activations)
-                quant_observer_args_weights["dtype"] = getattr(torch, quant_observer_args_weights["dtype"])
-                quant_observer_args_weights["qscheme"] = getattr(torch, quant_observer_args_weights["qscheme"])
+               
+                if "dtype" in quant_observer_args_activations.keys():
+                    quant_observer_args_activations["dtype"] = getattr(torch, quant_observer_args_activations["dtype"])
+                if "qscheme" in quant_observer_args_activations.keys():    
+                    quant_observer_args_activations["qscheme"] = getattr(torch, quant_observer_args_activations["qscheme"])
+                
+                observer_weights_class = getattr(py_observers, quant_observer_weights)
+                
+                if "dtype" in quant_observer_args_weights.keys():
+                    quant_observer_args_weights["dtype"] = getattr(torch, quant_observer_args_weights["dtype"])
+                if "qscheme" in quant_observer_args_weights.keys():  
+                    quant_observer_args_weights["qscheme"] = getattr(torch, quant_observer_args_weights["qscheme"])
+            
+                
                 qconfig = QConfig(activation=observer_act_class.with_args(**quant_observer_args_activations),
                             weight =observer_weights_class.with_args(**quant_observer_args_weights))
             except:
@@ -339,5 +348,6 @@ parser.add_argument('path_to_experiment',  type=str,
 args = parser.parse_args()
 
 train(args.path_to_experiment)
+
 
 
