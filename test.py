@@ -187,6 +187,55 @@ def test(path_to_experiment, path_to_weights):
                 
                 print('Test/Acc   :' + str(acc_val/len(test_dataloader)))
                 print("--- %s seconds ---" % (time.time() - start_time))
+
+
+        elif quant_type == "dynamic":
+            # set validation state
+            weights_path = config['quant']["weights_path"]
+            dynamic_args = config["quant"]["dyn"]
+
+            dynamic_args["dtype"] = getattr(torch, dynamic_args["dtype"])
+            substitute = {}
+            for el in dynamic_args["layers"]:
+                add = getattr(torch.nn, el)
+                substitute.add(add)
+
+            dynamic_args["layers"] = substitute
+
+            try:
+                    net.load_state_dict(torch.load(weights_path, map_location='cpu'))
+            except:
+                chk = adjust_checkpoint(net, weights_path)
+                net.load_state_dict(chk)
+            net.eval()
+
+            net.eval()
+            metric_name = config["metric"]["metric"]
+            try:
+                metric = getattr(importlib.import_module("pytorch_quantization.meters"), metric_name)
+            except NotImplementedError:
+                print("Implement the metric in pytorch-quantization/meters")
+    
+
+
+
+        torch.quantization.quantize_dynamic(model=net, **dynamic_args)
+        
+        net.eval()
+        val_loss = 0.0
+        acc_val = 0.0
+        with torch.no_grad():
+                for data in val_dataloader:
+                
+                    inputs, labels = data
+
+                    outputs = net(inputs)
+                    acc = metric(outputs, labels)
+
+                    acc_val += acc
+
+        print('Test/Loss         :' + str(val_loss/len(val_dataloader))+'   ,' + 'Test/Acc   :' + str(acc_val/len(val_dataloader)))
+        
     else:
         try:
             net.load_state_dict(torch.load(weights, map_location='cpu'))

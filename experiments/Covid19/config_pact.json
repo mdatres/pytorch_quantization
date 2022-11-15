@@ -33,7 +33,7 @@
         },
     "optimizer": {
         "optimizer" : "Adam",
-        "kwargs"    : {}
+        "kwargs"    : {"lr":    0.00001}
     },   
     "loss": {
         "loss": "CrossEntropyLoss", 
