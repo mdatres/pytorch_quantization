@@ -1,0 +1,51 @@
+{   
+    "model": {
+        "model":  "ResNet", 
+        "kwargs": {}
+    },
+    "quant": {
+        "quant": true,
+        "type" : "qat",
+        "observer": {
+            "activations": {
+                "name": "PACTFakeQuantize", 
+                "kwargs": {
+                    "quant_min" : 0,
+                    "quant_max" : 255, 
+                    "learn"     : true, 
+                    "dtype"     : "quint8", 
+                    "qscheme"   : "per_tensor_affine", 
+                    "reduce_range": true
+                    }
+                }, 
+            "weights": {
+                "name": "PACTFakeQuantize", 
+                "kwargs": {
+                    "quant_min" : -128,
+                    "quant_max" : 127, 
+                    "learn"     : false, 
+                    "dtype"     : "qint8", 
+                    "qscheme"   : "per_tensor_symmetric", 
+                    "reduce_range": false
+                }
+             }
+         }
+        },
+    "optimizer": {
+        "optimizer" : "Adam",
+        "kwargs"    : {}
+    },   
+    "loss": {
+        "loss": "CrossEntropyLoss", 
+        "kwargs": {}
+    },
+    "epochs":    50, 
+    "lr_scheduler": {
+        "lr_scheduler"  : "ReduceLROnPlateau",
+        "kwargs"        : {}
+    }, 
+    "device" :   "cuda:0", 
+    "metric"  :  {
+        "metric":    "accuracy"
+    }
+}

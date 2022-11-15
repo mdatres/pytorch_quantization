@@ -1,6 +1,4 @@
 experiments/Covid19/logs/saves/quantized_weights.pth
-experiments/Covid19_float/*
-experiments/Covid19_pact/*
 pytorch_quantization/pytorch_quantization/build/*
 pytorch_quantization/pytorch_quantization.egg-info/*
 pytorch_quantization/__pycache__/*

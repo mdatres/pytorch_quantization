@@ -1,0 +1,27 @@
+{   
+    "model": {
+        "model":  "ResNet", 
+        "kwargs": {}
+    },
+    "quant": {
+        "quant": false,
+        "type" : "qat"
+        },
+    "optimizer": {
+        "optimizer" : "Adam",
+        "kwargs"    : {}
+    },   
+    "loss": {
+        "loss": "CrossEntropyLoss", 
+        "kwargs": {}
+    },
+    "epochs":    50, 
+    "lr_scheduler": {
+        "lr_scheduler"  : "ReduceLROnPlateau",
+        "kwargs"        : {}
+    }, 
+    "device" :   "cuda:0", 
+    "metric"  :  {
+        "metric":    "accuracy"
+    }
+}
