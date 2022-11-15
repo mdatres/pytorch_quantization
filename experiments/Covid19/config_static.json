@@ -4,32 +4,25 @@
         "kwargs": {}
     },
     "quant": {
-        "quant": false,
-        "type" : "qat",
+        "quant": true,
+        "type" : "static",
         "observer": {
             "activations": {
-                "name": "PACTFakeQuantize", 
+                "name": "HistogramObserver",
                 "kwargs": {
-                    "quant_min" : 0,
-                    "quant_max" : 255, 
-                    "learn"     : true, 
-                    "dtype"     : "quint8", 
-                    "qscheme"   : "per_tensor_affine", 
                     "reduce_range": true
-                    }
-                }, 
-            "weights": {
-                "name": "PACTFakeQuantize", 
-                "kwargs": {
-                    "quant_min" : -128,
-                    "quant_max" : 127, 
-                    "learn"     : false, 
-                    "dtype"     : "qint8", 
-                    "qscheme"   : "per_tensor_symmetric", 
-                    "reduce_range": false
                 }
-             }
-         }
+            },
+            "weights": {
+                "name": "MinMaxObserver",
+                "kwargs":{
+                    "dtype"     : "qint8", 
+                    "qscheme"   : "per_tensor_symmetric"
+                }
+            }
+        },
+        "weights_path": "/Users/massimilianodatres/Experiments/pytorch-pact-exp/best_float.pth", 
+        "num_calibration_batches": 1000
         },
     "optimizer": {
         "optimizer" : "Adam",
@@ -49,3 +42,4 @@
         "metric":    "accuracy"
     }
 }
+
