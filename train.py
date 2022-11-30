@@ -5,9 +5,23 @@ from torch.quantization.qconfig import QConfig
 from pytorch_quantization.utils import get_children
 import json
 import importlib
+import multiprocessing
 from torch.utils.tensorboard import SummaryWriter
-from experiments.Covid19_pact.data import load_data
+from experiments.si_cura.data import load_data
 from pytorch_quantization.utils import adjust_checkpoint
+
+def out_on_batch(data, net, device, criterion, metric):
+    with torch.no_grad():
+        inputs, labels = data
+        inputs = inputs.to(device)  
+        labels = labels.to(device)
+
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        acc = metric(outputs, labels)
+
+    return loss, acc
+
 
 def train(path_to_experiment):
 
@@ -292,49 +306,19 @@ def train(path_to_experiment):
             # the model that will observe activation tensors during calibration.
             torch.quantization.prepare(net, inplace = True)
 
+            if 'cuda' in device:
+                net = torch.nn.DataParallel(net)
+                net.to(device)
+
             # calibrate the prepared model to determine quantization parameters for activations
             # in a real world setting, the calibration would be done with a representative dataset
             # Calibrate with the training set
-            current_n = 0
-            val_loss = 0.0
-            acc_val = 0.0
+            current_n = 1
+            loss_cal = 0.0
+            acc_cal = 0.0
             with torch.no_grad():
-                    for data in val_dataloader:
-                        if current_n <= num_calibration_batches:
-                            inputs, labels = data
-
-                            
-                            inputs = inputs.to(device)  
-                            labels = labels.to(device)
-
-                            outputs = net(inputs)
-                            loss = criterion(outputs, labels)
-                            acc = metric(outputs, labels)
-
-                            val_loss += loss
-                            acc_val += acc
-                            current_n += 1
-                        else: 
-                            break
-            
-
-            print('Post Training Quantization: Calibration done')
-
-            #net
-
-
-            # Convert the observed model to a quantized model. This does several things:
-            # quantizes the weights, computes and stores the scale and bias value to be
-            # used with each activation tensor, and replaces key operators with quantized
-            # implementations.
-            torch.quantization.convert(net, inplace = True)
-            
-            net.eval()
-            val_loss = 0.0
-            acc_val = 0.0
-            with torch.no_grad():
-                    for data in val_dataloader:
-                    
+                for data in val_dataloader:
+                    if current_n <= num_calibration_batches:
                         inputs, labels = data
 
                         
@@ -345,12 +329,51 @@ def train(path_to_experiment):
                         loss = criterion(outputs, labels)
                         acc = metric(outputs, labels)
 
-                        val_loss += loss
-                        acc_val += acc
+                        loss_cal += loss
+                        acc_cal += acc
                         current_n += 1
+                        if current_n == len(val_dataloader):
+                            loss_cal = loss_cal/len(val_dataloader)
+                            acc_cal = acc_cal/len(val_dataloader)
+                    else: 
+                        acc_cal = acc_cal/num_calibration_batches
+                        val_loss = loss_cal/num_calibration_batches
+                        break
+            
 
-            print('Val/Loss         :' + str(val_loss/len(val_dataloader))+'   ,' + 'Val/Acc   :' + str(acc_val/len(val_dataloader)))
-            path = os.path.join(path_save, 'quantized_weights.pth')
+            print('Post Training Quantization: Calibration done')
+
+            print('Calibrarion/Loss   :' + str(loss_cal) + '          '+'Calibrarion/Acc   :' + str(acc_cal))
+            print('Post Training Quantization: Calibration done')
+
+            # Convert the observed model to a quantized model. This does several things:
+            # quantizes the weights, computes and stores the scale and bias value to be
+            # used with each activation tensor, and replaces key operators with quantized
+            # implementations.
+            net.eval()
+            net.to("cpu")
+            
+            torch.quantization.convert(net, inplace = True)
+            
+            try:
+                n_cpus = config["n_cpus"]
+            except:
+                n_cpus = multiprocessing.cpu_count()
+                
+            pool = multiprocessing.Pool(n_cpus)
+            net.eval()
+            data_list = []
+            
+            for i,data in enumerate(val_dataloader): 
+               data_list.append((data,net, device, criterion, metric))
+            import time
+            start_time = time.time()
+            loss, results = pool.starmap(out_on_batch, data_list)   
+            print("--- %s seconds ---" % (time.time() - start_time))
+            val_loss = sum(loss)
+            acc_val = sum(results)
+            print('Val/Loss   :' + str(val_loss/len(loss)) + '          '+'Val/Acc   :' + str(acc_val/len(results)))
+
             torch.save(net.state_dict(), path)
 
         elif quant_type == "dynamic":
@@ -559,7 +582,9 @@ parser.add_argument('path_to_experiment',  type=str,
 
 args = parser.parse_args()
 
-train(args.path_to_experiment)
+if __name__ == '__main__':
+    train(args.path_to_experiment)
+
 
 
 

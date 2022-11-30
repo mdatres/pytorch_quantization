@@ -1,0 +1,31 @@
+{   
+    "model": {
+        "model":  "MyEnsemble", 
+        "kwargs": {
+        }
+    },
+    "quant": {
+        "quant": false,
+        "type" : "static",
+         "weights_path": "/data2/mdatres/pytorch-quant/pytorch_quantization/experiments/si_cura/best_weights_matteo/resnet50.pth", 
+         "num_calibration_batches": 100
+        },
+    "optimizer": {
+        "optimizer" : "Adam",
+        "kwargs"    : {"lr":    0.00001}
+    },   
+    "loss": {
+        "loss": "CrossEntropyLoss", 
+        "kwargs": {}
+    },
+    "epochs":    20, 
+    "lr_scheduler": {
+        "lr_scheduler"  : "ReduceLROnPlateau",
+        "kwargs"        : {}
+    }, 
+    "device" :   "cpu", 
+    "n_cpus"  :     4,
+    "metric"  :  {
+        "metric":    "accuracy"
+    }
+}

@@ -1,12 +1,23 @@
 import torch 
 
 import os
-
+import multiprocessing
 import json
 import importlib
 from torch.quantization.qconfig import QConfig
-from experiments.Covid19.data import load_data
+from experiments.si_cura_float.data import load_data
 from pytorch_quantization.utils import adjust_checkpoint
+
+def test_one(data, net, metric):
+    with torch.no_grad():
+        inputs, labels = data
+
+
+        outputs = net(inputs)
+        acc = metric(outputs, labels)
+       
+        
+        return acc
 
 def test(path_to_experiment, path_to_weights):
 
@@ -30,6 +41,10 @@ def test(path_to_experiment, path_to_weights):
     try:
         net_class = getattr(pyquant_models, net_class)
         net = net_class(**net_kwargs)
+        try:
+            net = net.net
+        except: 
+            pass
     except ModuleNotFoundError:
         print("Implement your model in pytorch_quantization/models")
     train_dataloader, val_dataloader, test_dataloader = load_data()
@@ -187,9 +202,10 @@ def test(path_to_experiment, path_to_weights):
                 
                 print('Test/Acc   :' + str(acc_val/len(test_dataloader)))
                 print("--- %s seconds ---" % (time.time() - start_time))
-
+                print(quant_type)
 
         elif quant_type == "dynamic":
+
             # set validation state
             weights_path = config['quant']["weights_path"]
             dynamic_args = config["quant"]["dyn"]
@@ -219,22 +235,22 @@ def test(path_to_experiment, path_to_weights):
 
 
 
-        torch.quantization.quantize_dynamic(model=net, **dynamic_args)
-        
-        net.eval()
-        val_loss = 0.0
-        acc_val = 0.0
-        with torch.no_grad():
-                for data in val_dataloader:
-                
-                    inputs, labels = data
+            torch.quantization.quantize_dynamic(model=net, **dynamic_args)
+            
+            net.eval()
+            val_loss = 0.0
+            acc_val = 0.0
+            with torch.no_grad():
+                    for data in val_dataloader:
+                    
+                        inputs, labels = data
 
-                    outputs = net(inputs)
-                    acc = metric(outputs, labels)
+                        outputs = net(inputs)
+                        acc = metric(outputs, labels)
 
-                    acc_val += acc
+                        acc_val += acc
 
-        print('Test/Loss         :' + str(val_loss/len(val_dataloader))+'   ,' + 'Test/Acc   :' + str(acc_val/len(val_dataloader)))
+            print('Test/Loss         :' + str(val_loss/len(val_dataloader))+'   ,' + 'Test/Acc   :' + str(acc_val/len(val_dataloader)))
         
     else:
         try:
@@ -247,18 +263,23 @@ def test(path_to_experiment, path_to_weights):
         acc_val = 0.0
         import time
         start_time = time.time()
-        with torch.no_grad():
-            for data in test_dataloader:
-                inputs, labels = data
-
-
-                outputs = net(inputs)
-                acc = metric(outputs, labels)
-
-                
-                acc_val += acc
+        try:
+            n_cpus = config["n_cpus"]
+        except:
+            n_cpus = multiprocessing.cpu_count()
+            
+        pool = multiprocessing.Pool(n_cpus)
+        net.eval()
+        data_list = []
         
-        print('Test/Acc   :' + str(acc_val/len(test_dataloader)))
+        for data in test_dataloader: 
+            data_list.append((data,net, metric))
+        
+        results = pool.starmap(test_one, data_list)   
+    
+
+        acc_val = sum(results)
+        print('Test/Acc   :' + str(acc_val/len(results)))
         print("--- %s seconds ---" % (time.time() - start_time))
 
 
@@ -273,5 +294,5 @@ parser.add_argument('-path_to_weights',  type=str, default='.',
 
 
 args = parser.parse_args()
-
-test(args.path_to_experiment, args.path_to_weights)
+if __name__ == '__main__':
+    test(args.path_to_experiment, args.path_to_weights)

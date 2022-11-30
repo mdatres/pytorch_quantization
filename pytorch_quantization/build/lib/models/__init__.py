@@ -1,2 +1,3 @@
 from .MobileNetV2 import MobileNetV2
-from .resnet import ResNet
+from .resnet import *
+from .EnsembleResnet import MyEnsemble
